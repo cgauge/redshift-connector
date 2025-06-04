@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 
-namespace CustomerGauge\Redshift;
+namespace CustomerGauge\Redshift\Resolvers;
 
 use Aws\SecretsManager\SecretsManagerClient;
 use Illuminate\Http\Client\Factory;
