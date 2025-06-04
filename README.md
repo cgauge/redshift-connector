@@ -9,7 +9,7 @@ This library was inspired on [Laravel Aurora Connector](https://github.com/cgaug
 ## 🚀 Installation
 
 ```bash
-composer customergauge/redshift
+composer require customergauge/redshift
 ```
 
 ## ⚙️ Usage
@@ -30,11 +30,26 @@ In your `config/database.php`, define a connection using the `redshift` driver:
     'options' => [],
     'redshift' => [
         'secret' => env('AWS_REDSHIFT_SECRET'), // optional
+        'temporary_credential' => [] // optional: IAM-based temporary auth
     ],
 ],
 ```
 
-You can optionally configure a secret name for **AWS Secrets Manager** to securely fetch the credentials.
+You can optionally configure a secret name for AWS **AWS Secrets Manager** via `redshift.secret` to securely fetch the database credentials.
+
+Alternatively, if your application runs with sufficient IAM permissions, you can use temporary credentials to connect to Redshift.
+To enable this, set the temporary_credential option in the redshift config:
+
+```php
+'temporary_credential' => [
+    'workgroupName' => 'your-redshift-workgroup-name', // mandatory to work
+    // You may also pass any valid parameters supported by AWS Redshift Serverless getCredentials API
+],
+```
+When this option is enabled, the application will connect to Amazon Redshift using short-lived credentials obtained via AWS IAM authentication,
+improving security by avoiding static passwords and enabling fine-grained access control.
+
+**This requires your application (e.g. ECS task, Lambda, EC2, etc.) to assume an IAM role with permission to call redshift-serverless:GetCredentials**
 
 ## 🌍 AWS Configuration
 
