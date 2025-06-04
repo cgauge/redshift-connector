@@ -5,6 +5,7 @@ namespace CustomerGauge\Redshift;
 
 use Illuminate\Support\ServiceProvider;
 use Aws\SecretsManager\SecretsManagerClient;
+use Aws\RedshiftServerless\RedshiftServerlessClient;
 
 final class AwsServiceProvider extends ServiceProvider
 {
@@ -15,6 +16,15 @@ final class AwsServiceProvider extends ServiceProvider
 
             return new SecretsManagerClient([
                 'version' => '2017-10-17',
+                'region' => $config['region'],
+            ]);
+        });
+
+        $this->app->singleton(RedshiftServerlessClient::class, function () {
+            $config = $this->app['config']->get('aws');
+
+            return new RedshiftServerlessClient([
+                'version' => '2021-04-21',
                 'region' => $config['region'],
             ]);
         });

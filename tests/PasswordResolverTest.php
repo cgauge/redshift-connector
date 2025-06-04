@@ -3,7 +3,7 @@
 namespace Tests\CustomerGauge\Redshift;
 
 use Aws\SecretsManager\SecretsManagerClient;
-use CustomerGauge\Redshift\PasswordResolver;
+use CustomerGauge\Redshift\Resolvers\PasswordResolver;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Http\Client\Response;
 use PHPUnit\Framework\TestCase;
@@ -12,7 +12,7 @@ use GuzzleHttp\Psr7\Response as Psr7Response;
 
 class PasswordResolverTest extends TestCase
 {
-    public function testRetrieveSecretFromCacheServer()
+    public function test_retrieve_secret_from_cache_server()
     {
         $secretName = 'secretName';
         $password = 'password';
@@ -38,7 +38,7 @@ class PasswordResolverTest extends TestCase
         $this->assertEquals($password, $result);
     }
 
-    public function testFallbackToSecretsManagerWhenCacheServerIsDown()
+    public function test_fallback_to_secrets_manager_when_cache_server_is_down()
     {
         $secretName = 'secretName';
         $password = 'password';
@@ -59,7 +59,7 @@ class PasswordResolverTest extends TestCase
         $this->assertEquals($password, $result);
     }
 
-    public function testItDoesNotCallCacheServerWhenFreshIsTrue()
+    public function test_it_does_not_call_cache_server_when_fresh_is_true()
     {
         $secretName = 'secretName';
         $password = 'password';
