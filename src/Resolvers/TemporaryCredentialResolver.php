@@ -13,9 +13,7 @@ final class TemporaryCredentialResolver
     {
         $validated = $this->validate($config);
 
-        $result = $this->client->getCredentialsAsync($validated);
-
-        $response = $result->wait();
+        $response = $this->client->getCredentialsAsync($validated)->wait();
 
         return [
             'username' => $response['dbUser'],
