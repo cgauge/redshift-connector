@@ -36,7 +36,7 @@ final class RedshiftConnector extends PostgresConnector
         // is useful for automation tests that bypass the connection process.
 
         if (! empty($config['password'])) {
-            return $this->customConnection($dsn, $config, $options);
+            return parent::createConnection($dsn, $config, $options);
         }
 
         $execute = function (int $attempt) use ($dsn, $config, $options) {
@@ -52,26 +52,11 @@ final class RedshiftConnector extends PostgresConnector
 
             $config['password'] = $this->password->resolve($config['redshift']['secret'], $freshSecret);
 
-            return $this->customConnection($dsn, $config, $options);
+            return parent::createConnection($dsn, $config, $options);
         };
 
         $condition = fn (Exception $e) => $e instanceof PDOException && str_contains($e->getMessage(), 'Access denied for user');
 
         return retry(when: $condition, callback: $execute, times: 3);
-    }
-
-    private function customConnection($dsn, array $config, array $options): \PDO
-    {
-        $connection = parent::createConnection($dsn, $config, $options);
-
-        $timezone = $config['timezone'] ?? null;
-
-        // Redshift does not support connect on timezone using DSN,
-        // only through SET timezone {timezone}
-        if ($timezone) {
-            $connection->exec("SET timezone TO $timezone");
-        }
-
-        return $connection;
     }
 }
