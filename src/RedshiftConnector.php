@@ -5,7 +5,6 @@ namespace CustomerGauge\Redshift;
 use CustomerGauge\Redshift\Resolvers\PasswordResolver;
 use CustomerGauge\Redshift\Resolvers\TemporaryCredentialResolver;
 use Illuminate\Database\Connectors\PostgresConnector;
-use PDOException;
 use Exception;
 
 final class RedshiftConnector extends PostgresConnector
@@ -55,8 +54,6 @@ final class RedshiftConnector extends PostgresConnector
             return parent::createConnection($dsn, $config, $options);
         };
 
-        $condition = fn (Exception $e) => $e instanceof PDOException && str_contains($e->getMessage(), 'Access denied for user');
-
-        return retry(when: $condition, callback: $execute, times: 3);
+        return retry(when: AuthFailure::shouldRefreshSecret(...), callback: $execute, times: 2);
     }
 }
