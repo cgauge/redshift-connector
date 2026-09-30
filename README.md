@@ -68,6 +68,20 @@ This package can integrate with [AWS Secrets Manager](https://aws.amazon.com/sec
 
 To improve performance, we recommend using the [AWS Secrets Manager Caching Extension](https://github.com/cgauge/aws-secretsmanager-caching-extension).
 
+### Password chain
+
+When `redshift.secret` is set (and `password` / `temporary_credential` are not), the connector tries candidate passwords in this order and stops at the first success:
+
+1. **Extension cache** (AWSCURRENT via the Lambda Parameters and Secrets extension). If the extension is unreachable, it falls back to a direct Secrets Manager call. The happy path makes no API calls.
+2. **AWSCURRENT** fetched directly from Secrets Manager, bypassing a stale extension cache.
+3. **AWSPENDING** fetched directly. During rotation, Redshift may already have this password while AWSCURRENT still holds the old one.
+
+The same password is never tried twice in one `createConnection` call. AWSPENDING is skipped when the stage does not exist, when it points at the same `VersionId` as AWSCURRENT, or when its password was already tried.
+
+The connector advances to the next candidate only on recoverable auth failures (`password authentication failed` or `Access denied for user`). It does **not** retry on `Account locked due to multiple failed login attempts` or any other error: a locked Redshift user rejects even the correct password, and extra failures move the tenant closer to lockout.
+
+A warning is logged with the secret name and stage (`AWSCURRENT` or `AWSPENDING`) when a fallback candidate succeeds. Passwords and `SecretString` are never logged.
+
 ## 🧪 Example Query
 
 Once configured, you can use Eloquent or Query Builder as usual:
