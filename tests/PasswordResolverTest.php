@@ -2,6 +2,8 @@
 
 namespace Tests\CustomerGauge\Redshift;
 
+use Aws\Command;
+use Aws\SecretsManager\Exception\SecretsManagerException;
 use Aws\SecretsManager\SecretsManagerClient;
 use CustomerGauge\Redshift\Resolvers\PasswordResolver;
 use Illuminate\Http\Client\Factory;
@@ -77,5 +79,50 @@ class PasswordResolverTest extends TestCase
         $result = $sut->resolve($secretName, true);
 
         $this->assertEquals($password, $result);
+    }
+
+    public function test_resolve_stage_returns_password_and_version_id()
+    {
+        $secretName = 'secretName';
+        $password = 'pending-password';
+        $versionId = 'version-1';
+
+        $logger = $this->createMock(LoggerInterface::class);
+        $smClient = $this->createMock(SecretsManagerClient::class);
+
+        $smClient->expects($this->once())
+            ->method('__call')
+            ->with('getSecretValue', [['SecretId' => $secretName, 'VersionStage' => 'AWSPENDING']])
+            ->willReturn([
+                'SecretString' => json_encode(['password' => $password]),
+                'VersionId' => $versionId,
+            ]);
+
+        $sut = new PasswordResolver(new Factory(), $smClient, $logger);
+
+        $result = $sut->resolveStage($secretName, 'AWSPENDING');
+
+        $this->assertSame(['password' => $password, 'versionId' => $versionId], $result);
+    }
+
+    public function test_resolve_stage_returns_null_when_stage_is_missing()
+    {
+        $secretName = 'secretName';
+
+        $logger = $this->createMock(LoggerInterface::class);
+        $smClient = $this->createMock(SecretsManagerClient::class);
+
+        $smClient->expects($this->once())
+            ->method('__call')
+            ->with('getSecretValue', [['SecretId' => $secretName, 'VersionStage' => 'AWSPENDING']])
+            ->willThrowException(new SecretsManagerException(
+                'Secrets Manager can\'t find the specified secret.',
+                new Command('GetSecretValue'),
+                ['code' => 'ResourceNotFoundException'],
+            ));
+
+        $sut = new PasswordResolver(new Factory(), $smClient, $logger);
+
+        $this->assertNull($sut->resolveStage($secretName, 'AWSPENDING'));
     }
 }

@@ -2,12 +2,13 @@
 
 namespace CustomerGauge\Redshift\Resolvers;
 
+use Aws\SecretsManager\Exception\SecretsManagerException;
 use Aws\SecretsManager\SecretsManagerClient;
 use Illuminate\Http\Client\Factory;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
-final class PasswordResolver
+final class PasswordResolver implements PasswordSource
 {
     public function __construct(
         private Factory $client,
@@ -48,5 +49,31 @@ final class PasswordResolver
 
             return $this->retrieveFromSecretManager($secret);
         }
+    }
+
+    /**
+     * @return array{password: string, versionId: string}|null
+     */
+    public function resolveStage(string $secret, string $stage): ?array
+    {
+        try {
+            $response = $this->smClient->getSecretValue([
+                'SecretId' => $secret,
+                'VersionStage' => $stage,
+            ]);
+        } catch (SecretsManagerException $e) {
+            if ($e->getAwsErrorCode() === 'ResourceNotFoundException') {
+                return null;
+            }
+
+            throw $e;
+        }
+
+        $result = json_decode($response['SecretString'], true);
+
+        return [
+            'password' => $result['password'],
+            'versionId' => $response['VersionId'],
+        ];
     }
 }

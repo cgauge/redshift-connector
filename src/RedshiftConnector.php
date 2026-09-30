@@ -2,7 +2,6 @@
 
 namespace CustomerGauge\Redshift;
 
-use CustomerGauge\Redshift\Resolvers\PasswordResolver;
 use CustomerGauge\Redshift\Resolvers\TemporaryCredentialResolver;
 use Illuminate\Database\Connectors\PostgresConnector;
 use Exception;
@@ -10,7 +9,7 @@ use Exception;
 final class RedshiftConnector extends PostgresConnector
 {
     public function __construct(
-        private PasswordResolver $password,
+        private SecretPasswordChain $passwords,
         private TemporaryCredentialResolver $temporary
     ) {}
 
@@ -38,22 +37,17 @@ final class RedshiftConnector extends PostgresConnector
             return parent::createConnection($dsn, $config, $options);
         }
 
-        $execute = function (int $attempt) use ($dsn, $config, $options) {
-            if (! isset($config['redshift']['secret'])) {
-                throw new Exception('The secret name must be defined on database.{connection}.redshift.secret');
-            }
+        if (! isset($config['redshift']['secret'])) {
+            throw new Exception('The secret name must be defined on database.{connection}.redshift.secret');
+        }
 
-            // The Password Resolver extension will keep a cache of the password.
-            // If Laravel throws an exception because of wrong password, then
-            // we can retry but ask the extension to refresh the cache.
+        return $this->passwords->connect(
+            $config['redshift']['secret'],
+            function (string $password) use ($dsn, $config, $options) {
+                $config['password'] = $password;
 
-            $freshSecret = $attempt > 1;
-
-            $config['password'] = $this->password->resolve($config['redshift']['secret'], $freshSecret);
-
-            return parent::createConnection($dsn, $config, $options);
-        };
-
-        return retry(when: AuthFailure::shouldRefreshSecret(...), callback: $execute, times: 2);
+                return parent::createConnection($dsn, $config, $options);
+            },
+        );
     }
 }

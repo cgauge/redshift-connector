@@ -2,6 +2,8 @@
 
 namespace CustomerGauge\Redshift;
 
+use CustomerGauge\Redshift\Resolvers\PasswordResolver;
+use CustomerGauge\Redshift\Resolvers\PasswordSource;
 use Illuminate\Database\Connection;
 use Illuminate\Database\PostgresConnection;
 use Illuminate\Support\ServiceProvider;
@@ -22,6 +24,8 @@ final class RedshiftServiceProvider extends ServiceProvider
         };
 
         Connection::resolverFor('redshift', $factory);
+
+        $this->app->bind(PasswordSource::class, PasswordResolver::class);
 
         $this->app->bind('db.connector.redshift', RedshiftConnector::class);
     }
